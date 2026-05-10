@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TOXIC // CONCRETE Estimator</title>
+
+  <!-- PWA / App Meta -->
+  <meta name="theme-color" content="#020500"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="CONCRETE"/>
+  <meta name="description" content="Hazardous Material Concrete Estimator"/>
+
+  <!-- Inline SVG Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%23020500'/><circle cx='32' cy='32' r='5' fill='%23a8ff00'/><path d='M32 27A11 11 0 0 1 43 32 A16 16 0 0 0 32 10 A16 16 0 0 0 21 32 A11 11 0 0 1 32 27Z' fill='%23a8ff00'/><path d='M36 34A11 11 0 0 1 32 43A16 16 0 0 0 51 32A16 16 0 0 0 43 17A11 11 0 0 1 36 34Z' fill='%23a8ff00'/><path d='M28 34A11 11 0 0 1 21 17A16 16 0 0 0 13 32A16 16 0 0 0 32 43A11 11 0 0 1 28 34Z' fill='%23a8ff00'/><circle cx='32' cy='32' r='3.5' fill='%23020500'/><circle cx='32' cy='32' r='29' fill='none' stroke='%23a8ff00' stroke-width='2.5'/></svg>"/>
+
+  <!-- Apple Touch Icon -->
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='36' fill='%23020500'/><circle cx='90' cy='90' r='14' fill='%23a8ff00'/><path d='M90 76A31 31 0 0 1 121 90A45 45 0 0 0 90 28A45 45 0 0 0 59 90A31 31 0 0 1 90 76Z' fill='%23a8ff00'/><path d='M101 97A31 31 0 0 1 90 121A45 45 0 0 0 144 90A45 45 0 0 0 121 48A31 31 0 0 1 101 97Z' fill='%23a8ff00'/><path d='M79 97A31 31 0 0 1 59 48A45 45 0 0 0 36 90A45 45 0 0 0 90 121A31 31 0 0 1 79 97Z' fill='%23a8ff00'/><circle cx='90' cy='90' r='10' fill='%23020500'/><circle cx='90' cy='90' r='82' fill='none' stroke='%23a8ff00' stroke-width='6'/></svg>"/>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root {
+      --toxic:      #a8ff00;
+      --toxic-dim:  #6baa00;
+      --toxic-glow: rgba(168,255,0,0.3);
+      --acid:       #c6ff00;
+      --danger:     #ff4500;
+      --caution:    #ffd700;
+      --dark:       #020500;
+      --panel:      rgba(8,18,0,0.88);
+      --border:     rgba(168,255,0,0.22);
+      --text-dim:   rgba(168,255,0,0.48);
+      --font-mono:  'Share Tech Mono', monospace;
+      --font-hud:   'Orbitron', monospace;
+      --font-ui:    'Rajdhani', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; }
+
+    body {
+      min-height: 100vh;
+      background: var(--dark);
+      color: var(--toxic);
+      font-family: var(--font-mono);
+      cursor: crosshair;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.13) 2px, rgba(0,0,0,0.13) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .bg-pulse {
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 50%, rgba(50,110,0,0.09) 0%, transparent 70%),
+        radial-gradient(ellipse 35% 35% at 85% 15%, rgba(90,160,0,0.05) 0%, transparent 60%),
+        radial-gradient(ellipse 30% 45% at 15% 85%, rgba(70,140,0,0.05) 0%, transparent 60%);
+      animation: bgBreathe 5s ease-in-out infinite;
+      pointer-events: none; z-index: 0;
+    }
+    @keyframes bgBreathe { 0%,100%{ opacity:.6; } 50%{ opacity:1; } }
+
+    .drips { position: fixed; top:0; left:0; width:100%; pointer-events:none; z-index:1; }
+    .drip {
+      position: absolute; top: -30px;
+      border-radius: 0 0 60% 60%;
+      background: linear-gradient(to bottom, var(--toxic), rgba(168,255,0,0.08), transparent);
+      animation: drip linear infinite; opacity: 0;
+    }
+    @keyframes drip {
+      0%  { opacity:0; transform:translateY(0); }
+      5%  { opacity:.85; }
+      90% { opacity:.4; }
+      100%{ opacity:0; transform:translateY(105vh); }
+    }
+
+    .particles { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
+    .particle {
+      position:absolute; border-radius:50%;
+      background:var(--toxic); box-shadow:0 0 5px var(--toxic);
+      animation:floatUp linear infinite; opacity:0;
+    }
+    @keyframes floatUp {
+      0%  { opacity:0; transform:translateY(0) translateX(0); }
+      10% { opacity:.7; }
+      90% { opacity:.25; }
+      100%{ opacity:0; transform:translateY(-100vh) translateX(var(--drift,0px)); }
+    }
+
+    /* HEADER */
+    .site-header { position:relative; z-index:10; }
+
+    .hazard-tape {
+      background: repeating-linear-gradient(
+        -55deg, var(--caution), var(--caution) 13px, #080800 13px, #080800 26px
+      );
+      padding: 6px 0; overflow: hidden;
+    }
+    .tape-text {
+      display: block; white-space: nowrap;
+      font-family: var(--font-hud); font-size:.55rem;
+      font-weight:900; letter-spacing:3px; color:#080800;
+      animation: scrollL 16s linear infinite;
+    }
+    .tape-text.reverse { animation: scrollR 16s linear infinite; }
+    @keyframes scrollL { 0%{ transform:translateX(0); } 100%{ transform:translateX(-50%); } }
+    @keyframes scrollR { 0%{ transform:translateX(-50%); } 100%{ transform:translateX(0); } }
+
+    .header-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px; padding: 16px 32px;
+      background: rgba(0,0,0,0.6); border-bottom: 1px solid var(--border);
+    }
+
+    .logo-block { display:flex; align-items:center; gap:16px; }
+    .bio-wrap { position:relative; display:inline-block; flex-shrink:0; }
+    .bio-ring {
+      position:absolute; border-radius:50%;
+      border:1px solid rgba(168,255,0,0.2);
+      animation:ringPulse 2.5s ease-in-out infinite;
+    }
+    .bio-ring.r1 { inset:-10px; }
+    .bio-ring.r2 { inset:-20px; border-color:rgba(168,255,0,0.1); animation-delay:.5s; }
+    @keyframes ringPulse { 0%,100%{transform:scale(1);opacity:.5;} 50%{transform:scale(1.07);opacity:1;} }
+
+    .bio-icon {
+      display: block; width: 52px; height: 52px;
+      animation: iconBreath 4s ease-in-out infinite;
+      user-select: none;
+      filter: drop-shadow(0 0 14px #a8ff00) drop-shadow(0 0 40px #6baa00);
+    }
+    .bio-icon svg { width: 100%; height: 100%; }
+    @keyframes iconBreath {
+      0%,100%{ filter:drop-shadow(0 0 14px #a8ff00) drop-shadow(0 0 40px #6baa00); }
+      50%    { filter:drop-shadow(0 0 28px #c6ff00) drop-shadow(0 0 70px #a8ff00); transform:scale(1.06); }
+    }
+
+    .title-stack { display:flex; flex-direction:column; gap:2px; }
+    .main-title {
+      font-family:var(--font-hud); font-size:clamp(1.2rem,3vw,1.9rem);
+      font-weight:900; letter-spacing:5px; color:var(--toxic);
+      text-shadow:0 0 18px var(--toxic), 0 0 50px var(--toxic-dim);
+      animation:titleFlicker 10s step-end infinite;
+    }
+    @keyframes titleFlicker {
+      0%,100%{opacity:1;} 92%{opacity:1;} 92.4%{opacity:.2;} 92.8%{opacity:1;}
+      97%{opacity:1;} 97.3%{opacity:.4;} 97.6%{opacity:1;}
+    }
+    .slash { color:var(--caution); text-shadow:0 0 12px var(--caution); margin:0 4px; }
+    .sub-title {
+      font-family:var(--font-ui); font-size:.7rem; font-weight:500;
+      letter-spacing:6px; color:var(--text-dim); text-transform:uppercase;
+    }
+
+    .sys-tags { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .tag {
+      font-family:var(--font-hud); font-size:.52rem; letter-spacing:1.5px;
+      padding:4px 9px; border:1px solid rgba(168,255,0,0.18); border-radius:2px;
+      color:rgba(168,255,0,.32); background:rgba(168,255,0,.03); white-space:nowrap;
+    }
+    .tag.active { border-color:rgba(168,255,0,.55); color:var(--toxic-dim); }
+
+    /* WORKSPACE */
+    .workspace {
+      flex: 1; display: grid; grid-template-columns: 1fr 1fr;
+      gap: 16px; padding: 20px 24px;
+      position: relative; z-index:10; align-items: start;
+    }
+    @media (max-width: 860px) { .workspace { grid-template-columns:1fr; } }
+
+    .panel {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 3px; padding: 24px 22px;
+      position: relative; overflow: hidden;
+    }
+    .panel::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:2px;
+      background:linear-gradient(90deg,transparent,var(--toxic),transparent);
+      animation:panelScan 4s ease-in-out infinite; transform-origin:left;
+    }
+    @keyframes panelScan {
+      0%  { transform:scaleX(0) translateX(0); opacity:1; }
+      50% { transform:scaleX(1) translateX(0); opacity:1; }
+      100%{ transform:scaleX(0) translateX(200%); opacity:0; }
+    }
+
+    .bracket { position:absolute; width:16px; height:16px; border-color:var(--toxic); border-style:solid; opacity:.65; }
+    .bracket.tl{ top:0; left:0;  border-width:2px 0 0 2px; }
+    .bracket.tr{ top:0; right:0; border-width:2px 2px 0 0; }
+    .bracket.bl{ bottom:0; left:0;  border-width:0 0 2px 2px; }
+    .bracket.br{ bottom:0; right:0; border-width:0 2px 2px 0; }
+
+    .panel-label {
+      font-family:var(--font-hud); font-size:.58rem; font-weight:700;
+      letter-spacing:3px; color:var(--text-dim); text-transform:uppercase;
+      display:flex; align-items:center; gap:10px; margin-bottom:22px;
+    }
+    .panel-label::after { content:''; flex:1; height:1px; background:linear-gradient(90deg,var(--border),transparent); }
+    .panel-num { color:rgba(168,255,0,.2); font-size:.5rem; }
+
+    .status-dot {
+      width:7px; height:7px; border-radius:50%; flex-shrink:0;
+      background:var(--toxic); box-shadow:0 0 10px var(--toxic), 0 0 20px var(--toxic-dim);
+      animation:dotBlink 1.3s step-end infinite;
+    }
+    @keyframes dotBlink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+    .field { margin-bottom:20px; }
+    .field-header { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:7px; }
+    .fname {
+      font-family:var(--font-ui); font-size:.72rem; font-weight:700;
+      letter-spacing:3.5px; color:var(--toxic); text-transform:uppercase;
+    }
+    .fcode { font-size:.52rem; color:rgba(168,255,0,.25); letter-spacing:1px; }
+
+    .input-wrap { position:relative; }
+    input[type="number"] {
+      width:100%; background:rgba(0,0,0,.78);
+      border:1px solid rgba(168,255,0,.18); border-radius:2px;
+      color:var(--toxic); font-family:var(--font-mono); font-size:1.05rem;
+      padding:12px 52px 12px 14px; outline:none; letter-spacing:3px;
+      transition:border-color .25s, box-shadow .25s, background .25s;
+    }
+    input[type="number"]:focus {
+      border-color:var(--toxic);
+      box-shadow:0 0 0 1px rgba(168,255,0,.35), 0 0 22px var(--toxic-glow), inset 0 0 14px rgba(168,255,0,.04);
+      background:rgba(0,5,0,.92);
+    }
+    input[type="number"]::placeholder { color:rgba(168,255,0,.18); letter-spacing:1px; }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button { -webkit-appearance:none; }
+
+    .unit-badge {
+      position:absolute; right:0; top:0; bottom:0; width:46px;
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--font-hud); font-size:.58rem; font-weight:700; letter-spacing:1px;
+      background:rgba(168,255,0,.07); border-left:1px solid rgba(168,255,0,.18);
+      color:var(--toxic-dim);
+    }
+
+    .bar-track { height:3px; background:rgba(168,255,0,.07); margin-top:6px; border-radius:2px; overflow:hidden; }
+    .bar-fill {
+      height:100%; width:0%;
+      background:linear-gradient(90deg, #244800, var(--toxic-dim), var(--toxic));
+      box-shadow:0 0 8px var(--toxic); border-radius:2px;
+      transition:width .4s cubic-bezier(.23,1,.32,1);
+    }
+
+    .formula-box {
+      background:rgba(168,255,0,.03); border:1px solid rgba(168,255,0,.1);
+      border-radius:2px; padding:12px 16px; margin-bottom:18px; text-align:center;
+    }
+    .formula-label { font-size:.55rem; letter-spacing:3px; color:var(--text-dim); margin-bottom:6px; font-family:var(--font-hud); }
+    .formula-text { font-family:var(--font-hud); font-size:1.1rem; font-weight:700; color:var(--toxic); letter-spacing:4px; }
+    .op { color:var(--caution); }
+    .formula-sub { font-size:.55rem; color:rgba(168,255,0,.25); margin-top:6px; letter-spacing:1px; }
+
+    .btn-calc {
+      width:100%; border:1px solid var(--toxic); border-radius:2px;
+      background:transparent; cursor:crosshair; position:relative; overflow:hidden;
+      transition:box-shadow .3s, transform .15s;
+      box-shadow:0 0 18px rgba(168,255,0,.1), inset 0 0 18px rgba(168,255,0,.02);
+    }
+    .btn-calc:hover {
+      box-shadow:0 0 45px rgba(168,255,0,.35), 0 0 90px rgba(168,255,0,.08), inset 0 0 28px rgba(168,255,0,.06);
+      transform:translateY(-2px);
+    }
+    .btn-calc:active { transform:translateY(0); }
+
+    .btn-sweep {
+      position:absolute; top:0; left:-100%; width:100%; height:100%;
+      background:linear-gradient(90deg,transparent,rgba(168,255,0,.12),transparent);
+    }
+    .btn-calc:hover .btn-sweep { animation:sweep .5s ease forwards; }
+    @keyframes sweep { 0%{left:-100%;} 100%{left:100%;} }
+
+    .btn-inner { display:flex; align-items:center; justify-content:center; gap:12px; padding:14px 20px; position:relative; z-index:2; }
+    .bt { font-family:var(--font-hud); font-size:.75rem; font-weight:700; letter-spacing:5px; color:var(--toxic); text-shadow:0 0 8px var(--toxic); }
+
+    .btn-calc.loading .btn-inner { opacity:0; }
+    .btn-calc.loading::after {
+      content:'PROCESSING...'; position:absolute; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--font-hud); font-size:.68rem; letter-spacing:4px; color:var(--toxic);
+      animation:loadFlash .5s step-end infinite;
+    }
+    @keyframes loadFlash { 0%,100%{opacity:1;} 50%{opacity:.2;} }
+
+    .error-msg {
+      display:none; margin-top:12px; padding:10px 14px;
+      background:rgba(255,50,0,.07); border:1px solid rgba(255,60,0,.4); border-radius:2px;
+      font-size:.66rem; color:var(--danger); text-shadow:0 0 8px var(--danger); letter-spacing:1px;
+    }
+
+    /* RESULTS */
+    .results-panel { transition:opacity .6s ease, transform .6s cubic-bezier(.23,1,.32,1); }
+
+    .idle-state {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:48px 20px; gap:12px; opacity:.4; transition:opacity .4s;
+    }
+    .idle-icon { width:48px; height:48px; animation:idlePulse 2s ease-in-out infinite; }
+    .idle-icon svg { width:100%; height:100%; }
+    @keyframes idlePulse { 0%,100%{opacity:.5;transform:scale(1);} 50%{opacity:1;transform:scale(1.08);} }
+    .idle-text { font-family:var(--font-hud); font-size:.75rem; letter-spacing:4px; color:var(--text-dim); }
+    .idle-sub  { font-size:.6rem; color:rgba(168,255,0,.25); letter-spacing:1px; text-align:center; line-height:1.7; }
+
+    .contam-row {
+      display:flex; align-items:center; gap:10px; margin-bottom:18px;
+      padding:10px 14px; background:rgba(168,255,0,.03); border:1px solid rgba(168,255,0,.1); border-radius:2px;
+    }
+    .c-lbl { font-family:var(--font-hud); font-size:.55rem; letter-spacing:2px; color:var(--text-dim); white-space:nowrap; }
+    .c-track { flex:1; height:5px; background:rgba(168,255,0,.08); border-radius:3px; overflow:hidden; }
+    .c-fill {
+      height:100%; width:0%;
+      background:linear-gradient(90deg, #1a5000, var(--toxic-dim), var(--toxic), var(--caution));
+      box-shadow:0 0 12px var(--toxic); border-radius:3px;
+      transition:width 1.6s cubic-bezier(.23,1,.32,1);
+    }
+    .c-pct { font-family:var(--font-hud); font-size:.62rem; color:var(--toxic); min-width:30px; text-align:right; }
+
+    .result-main {
+      display:flex; align-items:center; gap:18px;
+      background:rgba(0,22,0,.75); border:1px solid rgba(168,255,0,.28); border-radius:2px;
+      padding:20px 18px; margin-bottom:14px; box-shadow:0 0 28px rgba(168,255,0,.07);
+      opacity:0; transform:translateY(10px);
+      transition:opacity .5s .1s, transform .5s .1s;
+    }
+    .result-main.show { opacity:1; transform:translateY(0); }
+    .rm-icon {
+      font-family:var(--font-hud); font-size:.8rem; font-weight:900;
+      color:var(--toxic); flex-shrink:0; letter-spacing:2px;
+      border:1px solid rgba(168,255,0,.3); padding:10px 8px;
+      text-shadow:0 0 10px var(--toxic);
+    }
+    .rm-label { font-family:var(--font-ui); font-size:.62rem; font-weight:700; letter-spacing:2.5px; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase; }
+    .rm-value { font-family:var(--font-hud); font-size:clamp(.9rem,3.5vw,2.3rem); font-weight:900; color:var(--toxic); text-shadow:0 0 22px var(--toxic), 0 0 55px rgba(168,255,0,.28); line-height:1; word-break:break-all; overflow-wrap:anywhere; }
+    .rm-unit  { font-size:.58rem; color:rgba(168,255,0,.28); margin-top:5px; letter-spacing:1px; }
+
+    .mat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .mat-card {
+      background:rgba(0,0,0,.62); border:1px solid rgba(168,255,0,.12); border-radius:2px;
+      padding:16px 12px; position:relative; overflow:hidden;
+      opacity:0; transform:translateY(12px);
+      transition:opacity .5s, transform .5s, border-color .25s, box-shadow .25s;
+    }
+    .mat-card.show { opacity:1; transform:translateY(0); }
+    .mat-card:nth-child(1) { transition-delay:.15s; }
+    .mat-card:nth-child(2) { transition-delay:.25s; }
+    .mat-card:nth-child(3) { transition-delay:.35s; }
+    .mat-card:hover { border-color:rgba(168,255,0,.4); box-shadow:0 0 20px rgba(168,255,0,.1); transform:translateY(-3px) !important; }
+    .mat-card::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(168,255,0,.3),transparent);
+      transform:scaleX(0); transition:transform .3s;
+    }
+    .mat-card:hover::before { transform:scaleX(1); }
+
+    .mc-num   { position:absolute; top:8px; right:10px; font-size:.5rem; color:rgba(168,255,0,.18); letter-spacing:1px; }
+    .mc-tag   { font-family:var(--font-hud); font-size:.52rem; font-weight:700; letter-spacing:2px; color:var(--toxic-dim); margin-bottom:8px; }
+    .mc-label { font-family:var(--font-ui); font-size:.58rem; font-weight:700; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-bottom:7px; }
+    .mc-value { font-family:var(--font-hud); font-size:clamp(.65rem,1.8vw,1.3rem); font-weight:900; color:var(--toxic); text-shadow:0 0 16px var(--toxic); line-height:1.1; word-break:break-all; overflow-wrap:anywhere; }
+    .mc-unit  { font-size:.52rem; color:rgba(168,255,0,.25); margin-top:4px; letter-spacing:.8px; }
+
+    .sys-footer {
+      position:relative; z-index:10;
+      display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap;
+      padding:10px 24px; background:rgba(0,0,0,.5);
+      border-top:1px solid rgba(168,255,0,.1);
+      font-size:.57rem; color:rgba(168,255,0,.22); letter-spacing:2px;
+    }
+    .footer-sep { color:rgba(168,255,0,.15); }
+
+    ::-webkit-scrollbar { width:3px; }
+    ::-webkit-scrollbar-track { background:var(--dark); }
+    ::-webkit-scrollbar-thumb { background:var(--toxic-dim); border-radius:2px; }
+  </style>
+</head>
+<body>
+
+  <div class="bg-pulse"></div>
+  <div class="drips" id="drips"></div>
+  <div class="particles" id="particles"></div>
+
+  <header class="site-header">
+    <div class="hazard-tape">
+      <span class="tape-text">
+        HAZARDOUS MATERIAL // TOXIC ZONE // DANGER // DO NOT ENTER // CONTAMINATION RISK //
+        HAZARDOUS MATERIAL // TOXIC ZONE // DANGER // DO NOT ENTER // CONTAMINATION RISK //
+      </span>
+    </div>
+    <div class="header-inner">
+      <div class="logo-block">
+        <div class="bio-wrap">
+          <div class="bio-ring r1"></div>
+          <div class="bio-ring r2"></div>
+          <span class="bio-icon">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="#a8ff00">
+              <!-- Biohazard symbol drawn with paths -->
+              <circle cx="50" cy="50" r="8"/>
+              <!-- Top lobe -->
+              <path d="M50 42 A18 18 0 0 1 68 50 A26 26 0 0 0 50 16 A26 26 0 0 0 32 50 A18 18 0 0 1 50 42Z" opacity="1"/>
+              <!-- Bottom-right lobe -->
+              <path d="M57 54 A18 18 0 0 1 50 68 A26 26 0 0 0 82 50 A26 26 0 0 0 68 26 A18 18 0 0 1 57 54Z"/>
+              <!-- Bottom-left lobe -->
+              <path d="M43 54 A18 18 0 0 1 32 26 A26 26 0 0 0 18 50 A26 26 0 0 0 50 68 A18 18 0 0 1 43 54Z"/>
+              <!-- Center ring cutout -->
+              <circle cx="50" cy="50" r="5.5" fill="#020500"/>
+              <!-- Outer ring -->
+              <circle cx="50" cy="50" r="46" fill="none" stroke="#a8ff00" stroke-width="4"/>
+            </svg>
+          </span>
+        </div>
+        <div class="title-stack">
+          <div class="main-title">TOXIC<span class="slash">//</span>CONCRETE</div>
+          <div class="sub-title">Hazardous Material Estimator</div>
+        </div>
+      </div>
+      <div class="sys-tags">
+        <span class="tag active">● ONLINE</span>
+        <span class="tag">SYS: HZ-CONC-v4.2</span>
+        <span class="tag">UNIT: METRIC</span>
+        <span class="tag">CLASS: CONSTRUCTION</span>
+        <span class="tag" id="clock">--:--:--</span>
+      </div>
+    </div>
+    <div class="hazard-tape">
+      <span class="tape-text reverse">
+        CONTAMINATION RISK // DO NOT ENTER // DANGER // TOXIC ZONE // HAZARDOUS MATERIAL //
+        CONTAMINATION RISK // DO NOT ENTER // DANGER // TOXIC ZONE // HAZARDOUS MATERIAL //
+      </span>
+    </div>
+  </header>
+
+  <main class="workspace">
+
+    <section class="panel input-panel">
+      <div class="bracket tl"></div><div class="bracket tr"></div>
+      <div class="bracket bl"></div><div class="bracket br"></div>
+      <div class="panel-label">
+        <span class="status-dot"></span>
+        INPUT PARAMETERS
+        <span class="panel-num">01</span>
+      </div>
+
+      <div class="field">
+        <div class="field-header">
+          <span class="fname">LENGTH</span>
+          <span class="fcode">DIM-X // HORIZONTAL</span>
+        </div>
+        <div class="input-wrap">
+          <input type="number" id="length" placeholder="0.00" step="0.01" min="0" autocomplete="off" oninput="app.updateBar(this,'bar-l')"/>
+          <div class="unit-badge">MTR</div>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="bar-l"></div></div>
+      </div>
+
+      <div class="field">
+        <div class="field-header">
+          <span class="fname">WIDTH</span>
+          <span class="fcode">DIM-Y // LATERAL</span>
+        </div>
+        <div class="input-wrap">
+          <input type="number" id="width" placeholder="0.00" step="0.01" min="0" autocomplete="off" oninput="app.updateBar(this,'bar-w')"/>
+          <div class="unit-badge">MTR</div>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="bar-w"></div></div>
+      </div>
+
+      <div class="field">
+        <div class="field-header">
+          <span class="fname">THICKNESS</span>
+          <span class="fcode">DIM-Z // DEPTH</span>
+        </div>
+        <div class="input-wrap">
+          <input type="number" id="thickness" placeholder="0.00" step="0.01" min="0" autocomplete="off" oninput="app.updateBar(this,'bar-t')"/>
+          <div class="unit-badge">MTR</div>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="bar-t"></div></div>
+      </div>
+
+      <div class="formula-box">
+        <div class="formula-label">FORMULA</div>
+        <div class="formula-text">V = L <span class="op">x</span> W <span class="op">x</span> T</div>
+        <div class="formula-sub">CEMENT=9/m3 · SAND=0.5/m3 · GRAVEL=1.0/m3</div>
+      </div>
+
+      <button class="btn-calc" id="calcBtn" onclick="app.calculate()">
+        <div class="btn-sweep"></div>
+        <div class="btn-inner">
+          <span class="bt">[ INITIATE CALCULATION ]</span>
+        </div>
+      </button>
+
+      <div class="error-msg" id="error">ERROR -- ALL FIELDS MUST BE &gt; 0</div>
+    </section>
+
+    <section class="panel results-panel">
+      <div class="bracket tl"></div><div class="bracket tr"></div>
+      <div class="bracket bl"></div><div class="bracket br"></div>
+      <div class="panel-label">
+        <span class="status-dot"></span>
+        HAZMAT CONTAMINATION REPORT
+        <span class="panel-num">02</span>
+      </div>
+
+      <div class="contam-row">
+        <div class="c-lbl">CONC.LOAD</div>
+        <div class="c-track"><div class="c-fill" id="cFill"></div></div>
+        <div class="c-pct" id="cPct">--%</div>
+      </div>
+
+      <div class="result-main">
+        <div class="rm-icon">VOL</div>
+        <div class="rm-body">
+          <div class="rm-label">TOTAL CONCRETE VOLUME</div>
+          <div class="rm-value" id="res-volume">---</div>
+          <div class="rm-unit">CUBIC METERS (m3)</div>
+        </div>
+      </div>
+
+      <div class="mat-grid">
+        <div class="mat-card">
+          <div class="mc-num">02</div>
+          <div class="mc-tag">[ CMT ]</div>
+          <div class="mc-label">Cement Bags</div>
+          <div class="mc-value" id="res-cement">-</div>
+          <div class="mc-unit">bags @ 9/m3</div>
+        </div>
+        <div class="mat-card">
+          <div class="mc-num">03</div>
+          <div class="mc-tag">[ SND ]</div>
+          <div class="mc-label">Sand Volume</div>
+          <div class="mc-value" id="res-sand">-</div>
+          <div class="mc-unit">m3 @ 0.5/m3</div>
+        </div>
+        <div class="mat-card">
+          <div class="mc-num">04</div>
+          <div class="mc-tag">[ GRV ]</div>
+          <div class="mc-label">Gravel Volume</div>
+          <div class="mc-value" id="res-gravel">-</div>
+          <div class="mc-unit">m3 @ 1.0/m3</div>
+        </div>
+      </div>
+
+      <div class="idle-state" id="idleState">
+        <div class="idle-icon">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="24" cy="24" r="22" stroke="#a8ff00" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <circle cx="24" cy="24" r="14" stroke="#a8ff00" stroke-width="1" opacity=".4"/>
+            <circle cx="24" cy="24" r="4" fill="#a8ff00"/>
+            <line x1="24" y1="2" x2="24" y2="10" stroke="#a8ff00" stroke-width="1.5"/>
+            <line x1="24" y1="38" x2="24" y2="46" stroke="#a8ff00" stroke-width="1.5"/>
+            <line x1="2" y1="24" x2="10" y2="24" stroke="#a8ff00" stroke-width="1.5"/>
+            <line x1="38" y1="24" x2="46" y2="24" stroke="#a8ff00" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <div class="idle-text">AWAITING INPUT</div>
+        <div class="idle-sub">Enter dimensions on the left panel<br/>then initiate calculation</div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="sys-footer">
+    <span id="sysReadout">SYS READY // AWAITING INPUT // HZ-CONC-v4.2</span>
+    <span class="footer-sep">|</span>
+    <span>FORMULA: V = L x W x T</span>
+    <span class="footer-sep">|</span>
+    <span>ACCURACY: 99.8%</span>
+  </footer>
+
+  <script>
+    const app = (() => {
+      const MESSAGES = [
+        'SYS READY // AWAITING INPUT // HZ-CONC-v4.2',
+        'WARNING: TOXIC ZONE ACTIVE // PROCEED WITH CAUTION',
+        'HAZMAT PROTOCOL ENGAGED // ALL UNITS STANDBY',
+        'CONTAINMENT FIELD: NOMINAL // SCANNING PARAMETERS...',
+        'BIO-CONCRETE ESTIMATOR ONLINE // READY FOR INPUT',
+        'FORMULA: V = L x W x T // ACCURACY: 99.8%',
+        'MATERIAL RATIOS LOCKED // CEMENT · SAND · GRAVEL CALIBRATED',
+      ];
+      let msgIndex = 0;
+
+      function startClock() {
+        const el = document.getElementById('clock');
+        if (!el) return;
+        function tick() {
+          const now = new Date();
+          el.textContent =
+            String(now.getHours()).padStart(2,'0') + ':' +
+            String(now.getMinutes()).padStart(2,'0') + ':' +
+            String(now.getSeconds()).padStart(2,'0');
+        }
+        tick(); setInterval(tick, 1000);
+      }
+
+      function startReadout() {
+        const el = document.getElementById('sysReadout');
+        if (!el) return;
+        el.style.transition = 'opacity .3s ease';
+        setInterval(() => {
+          msgIndex = (msgIndex + 1) % MESSAGES.length;
+          el.style.opacity = '0';
+          setTimeout(() => { el.textContent = MESSAGES[msgIndex]; el.style.opacity = '1'; }, 300);
+        }, 3500);
+      }
+
+      function spawnDrips() {
+        const c = document.getElementById('drips');
+        if (!c) return;
+        for (let i = 0; i < 22; i++) {
+          const d = document.createElement('div');
+          d.className = 'drip';
+          d.style.cssText =
+            'left:' + (Math.random()*100) + '%;' +
+            'width:' + (1.5+Math.random()*2.5) + 'px;' +
+            'height:' + (50+Math.random()*150) + 'px;' +
+            'animation-duration:' + (5+Math.random()*9) + 's;' +
+            'animation-delay:' + (Math.random()*14) + 's;';
+          c.appendChild(d);
+        }
+      }
+
+      function spawnParticles() {
+        const c = document.getElementById('particles');
+        if (!c) return;
+        for (let i = 0; i < 28; i++) {
+          const p = document.createElement('div');
+          p.className = 'particle';
+          const sz = 1 + Math.random() * 3;
+          p.style.cssText =
+            'left:' + (Math.random()*100) + '%;' +
+            'bottom:' + (-Math.random()*20) + '%;' +
+            'width:' + sz + 'px;height:' + sz + 'px;' +
+            '--drift:' + (-40+Math.random()*80) + 'px;' +
+            'animation-duration:' + (7+Math.random()*10) + 's;' +
+            'animation-delay:' + (Math.random()*12) + 's;';
+          c.appendChild(p);
+        }
+      }
+
+      function updateBar(input, barId) {
+        const val = Math.max(0, parseFloat(input.value) || 0);
+        const bar = document.getElementById(barId);
+        if (bar) bar.style.width = Math.min(val / 20 * 100, 100) + '%';
+      }
+
+      function animateCounter(el, target, decimals) {
+        if (!el) return;
+        const start = performance.now();
+        const dur   = 1200;
+        (function tick(now) {
+          const p = Math.min((now - start) / dur, 1);
+          const val = target * (1 - Math.pow(1 - p, 4));
+          el.textContent = val.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+          if (p < 1) requestAnimationFrame(tick);
+        })(start);
+      }
+
+      function displayResults(data) {
+        const idle   = document.getElementById('idleState');
+        const mainEl = document.querySelector('.result-main');
+        const cards  = document.querySelectorAll('.mat-card');
+
+        if (idle) idle.style.display = 'none';
+
+        const pct = Math.min((data.volume / 100) * 100, 100);
+        setTimeout(() => {
+          const f = document.getElementById('cFill');
+          const p = document.getElementById('cPct');
+          if (f) f.style.width  = pct + '%';
+          if (p) p.textContent  = pct.toFixed(0) + '%';
+        }, 150);
+
+        if (mainEl) setTimeout(() => mainEl.classList.add('show'), 100);
+        cards.forEach((c, i) => setTimeout(() => c.classList.add('show'), 150 + i * 80));
+
+        setTimeout(() => {
+          animateCounter(document.getElementById('res-volume'), data.volume, 2);
+          animateCounter(document.getElementById('res-cement'), data.cement,  2);
+          animateCounter(document.getElementById('res-sand'),   data.sand,    2);
+          animateCounter(document.getElementById('res-gravel'), data.gravel,  2);
+        }, 250);
+      }
+
+      async function calculate() {
+        const errEl = document.getElementById('error');
+        const btn   = document.getElementById('calcBtn');
+        const L = parseFloat(document.getElementById('length').value);
+        const W = parseFloat(document.getElementById('width').value);
+        const T = parseFloat(document.getElementById('thickness').value);
+
+        if (!L || !W || !T || L <= 0 || W <= 0 || T <= 0) {
+          if (errEl) { errEl.textContent = 'ERROR -- ALL FIELDS MUST BE > 0'; errEl.style.display = 'block'; }
+          return;
+        }
+        if (errEl) errEl.style.display = 'none';
+
+        btn.classList.add('loading'); btn.disabled = true;
+        await new Promise(r => setTimeout(r, 1000));
+
+        const volume = L * W * T;
+        const data = {
+          volume: Math.round(volume       * 100) / 100,
+          cement: Math.round(volume * 9   * 100) / 100,
+          sand:   Math.round(volume * 0.5 * 100) / 100,
+          gravel: Math.round(volume * 1.0 * 100) / 100,
+        };
+
+        btn.classList.remove('loading'); btn.disabled = false;
+        displayResults(data);
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        spawnDrips(); spawnParticles(); startClock(); startReadout();
+        document.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+      });
+
+      return { calculate, updateBar };
+    })();
+  </script>
+</body>
+</html>
